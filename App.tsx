@@ -2003,7 +2003,7 @@ const App: React.FC = () => {
 
   return (
     <div 
-      className="w-screen h-screen bg-gray-200 overflow-hidden select-none relative"
+      className="w-full h-full bg-gray-200 overflow-hidden select-none relative"
     >
        <header 
         className="fixed top-11 left-11 z-20 flex items-center gap-2"
@@ -2029,7 +2029,7 @@ const App: React.FC = () => {
       </header>
 
       <div 
-        className="fixed top-11 right-4 z-20"
+        className="fixed top-11 right-11 z-20"
         onMouseDown={(e) => e.stopPropagation()}
         onMouseMove={(e) => e.stopPropagation()}
         onMouseUp={(e) => e.stopPropagation()}
