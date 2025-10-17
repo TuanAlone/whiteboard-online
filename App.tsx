@@ -2037,7 +2037,7 @@ const App: React.FC = () => {
       </header>
 
       <div 
-        className="fixed top-11 right-11 z-20"
+        className="fixed top-11 right-5 z-20"
         onMouseDown={(e) => e.stopPropagation()}
         onMouseMove={(e) => e.stopPropagation()}
         onMouseUp={(e) => e.stopPropagation()}
