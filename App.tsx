@@ -739,27 +739,35 @@ const App: React.FC = () => {
     const canvas = canvasRef.current!;
     const context = canvas.getContext('2d')!;
     contextRef.current = context;
+    const container = canvas.parentElement;
 
-    const handleResize = () => {
-        const container = canvas.parentElement;
-        if (!container) return;
+    if (!container) return;
 
+    const observer = new ResizeObserver(entries => {
+      const entry = entries[0];
+      if (entry) {
+        const { width, height } = entry.contentRect;
         const dpr = window.devicePixelRatio || 1;
-        const rect = container.getBoundingClientRect();
-        
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        canvas.style.width = `${rect.width}px`;
-        canvas.style.height = `${rect.height}px`;
 
-        contextRef.current?.scale(dpr, dpr);
-        
-        setViewport({ width: rect.width, height: rect.height });
+        // Check if size is different to prevent infinite loops in some browsers.
+        if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+            canvas.width = Math.round(width * dpr);
+            canvas.height = Math.round(height * dpr);
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
+            
+            // Updating the viewport state will trigger the drawing useEffect,
+            // which will handle redrawing and setting the canvas transform.
+            setViewport({ width, height });
+        }
+      }
+    });
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
     };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Initialize canvas and load data on first render
