@@ -74,6 +74,8 @@ const App: React.FC = () => {
     initialBounds?: { x: number; y: number; width: number; height: number; };
     handle?: string;
     imageId?: string;
+    strokeIds?: Set<string>;
+    imageIds?: Set<string>;
   } | null>(null);
   const lastStrokeProperties = useRef<Map<string, { points: Stroke['points'], lineWidth: number }>>(new Map());
   const lastImageProperties = useRef<Map<string, ImageTransform>>(new Map());
@@ -963,7 +965,7 @@ const App: React.FC = () => {
   ): Stroke[] => {
       if (!startState || !currentProject) return [];
 
-      const { startPoint, selectionCenter, initialBounds, handle } = startState;
+      const { startPoint, selectionCenter, initialBounds, handle, strokeIds } = startState;
       let dx = 0, dy = 0, rotation = 0, scale = 1;
       let anchor: { x: number; y: number; } | undefined = undefined;
 
@@ -995,14 +997,15 @@ const App: React.FC = () => {
       }
 
       if (dx === 0 && dy === 0 && rotation === 0 && scale === 1) {
-          return currentProject.strokes.filter(s => selectedStrokeIds.has(s.id));
+          return currentProject.strokes.filter(s => strokeIds?.has(s.id));
       }
 
       const cos = Math.cos(rotation);
       const sin = Math.sin(rotation);
       
       const newStrokes: Stroke[] = [];
-      for(const id of selectedStrokeIds) {
+      if (!strokeIds) { return []; }
+      for(const id of strokeIds) {
         const originalStroke = currentProject?.strokes.find(s => s.id === id);
         const originalProperties = lastStrokeProperties.current.get(id);
         if (!originalStroke || !originalProperties) continue;
@@ -1059,7 +1062,7 @@ const App: React.FC = () => {
         newStrokes.push(newStroke);
       }
       return newStrokes;
-  }, [currentProject, selectedStrokeIds]);
+  }, [currentProject]);
   
   const transformAnimationLoop = useCallback(() => {
     if (!transformStartRef.current || !lastCoords.current) {
@@ -1069,7 +1072,7 @@ const App: React.FC = () => {
 
     const coords = lastCoords.current;
     const currentAction = actionRef.current;
-    const { startPoint, initialTransform, handle, imageId } = transformStartRef.current;
+    const { startPoint, initialTransform, handle, imageId, imageIds } = transformStartRef.current;
     
     // Unified Dragging
     if (currentAction === 'dragging') {
@@ -1082,10 +1085,12 @@ const App: React.FC = () => {
         
         // Drag images
         const newImageTransforms = new Map<string, ImageTransform>();
-        for (const id of lastImageProperties.current.keys()) {
-            const initial = lastImageProperties.current.get(id);
-            if (initial) {
-                newImageTransforms.set(id, { ...initial, x: initial.x + dx, y: initial.y + dy });
+        if (imageIds) {
+            for (const id of imageIds) {
+                const initial = lastImageProperties.current.get(id);
+                if (initial) {
+                    newImageTransforms.set(id, { ...initial, x: initial.x + dx, y: initial.y + dy });
+                }
             }
         }
         setPreviewImageTransforms(newImageTransforms);
@@ -1219,13 +1224,13 @@ const App: React.FC = () => {
                         break;
                     }
                 }
-                if (cornerClicked) { actionRef.current = 'resizing-strokes'; transformStartRef.current = { startPoint: coords, handle: cornerClicked, initialBounds: bounds }; } 
+                if (cornerClicked) { actionRef.current = 'resizing-strokes'; transformStartRef.current = { startPoint: coords, handle: cornerClicked, initialBounds: bounds, strokeIds: selectedStrokeIds }; } 
                 else {
                     const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
                     const rotHandleRadius = HANDLE_SIZE / zoom;
                     const rotHandleY = bounds.y - padding - ROTATION_HANDLE_OFFSET / zoom;
                     const distToRotHandle = Math.hypot(coords.x - center.x, coords.y - rotHandleY);
-                    if (distToRotHandle <= rotHandleRadius) { actionRef.current = 'rotating-strokes'; transformStartRef.current = { startPoint: coords, selectionCenter: center }; }
+                    if (distToRotHandle <= rotHandleRadius) { actionRef.current = 'rotating-strokes'; transformStartRef.current = { startPoint: coords, selectionCenter: center, strokeIds: selectedStrokeIds }; }
                 }
                 if (actionRef.current === 'resizing-strokes' || actionRef.current === 'rotating-strokes') {
                     lastStrokeProperties.current = new Map(selectedStrokes.map(s => [s.id, { points: s.points, lineWidth: s.lineWidth }]));
@@ -1280,7 +1285,7 @@ const App: React.FC = () => {
                     coords.y <= paddedBounds.y + paddedBounds.height
                 ) {
                     actionRef.current = 'dragging';
-                    transformStartRef.current = { startPoint: coords };
+                    transformStartRef.current = { startPoint: coords, strokeIds: selectedStrokeIds, imageIds: selectedImageIds };
                     
                     lastStrokeProperties.current = new Map(allSelectedStrokes.map(s => [s.id, { points: s.points, lineWidth: s.lineWidth }]));
                     lastImageProperties.current = new Map(allSelectedImages.map(i => [i.id, i.transform]));
@@ -1327,7 +1332,6 @@ const App: React.FC = () => {
             const isAlreadySelected = isImage ? selectedImageIds.has(clickedId) : selectedStrokeIds.has(clickedId);
             
             actionRef.current = 'dragging';
-            transformStartRef.current = { startPoint: coords };
 
             let finalSelectedStrokeIds: Set<string>;
             let finalSelectedImageIds: Set<string>;
@@ -1358,6 +1362,8 @@ const App: React.FC = () => {
                 }
             }
             
+            transformStartRef.current = { startPoint: coords, strokeIds: finalSelectedStrokeIds, imageIds: finalSelectedImageIds };
+
             // Schedule the state update for React
             setSelectedStrokeIds(finalSelectedStrokeIds);
             setSelectedImageIds(finalSelectedImageIds);
@@ -1595,7 +1601,7 @@ const App: React.FC = () => {
                 const dx = finalCoords.x - startState.startPoint.x;
                 const dy = finalCoords.y - startState.startPoint.y;
                 updatedImages = currentProject.images.map(img => {
-                    if (selectedImageIds.has(img.id)) {
+                    if (startState.imageIds?.has(img.id)) {
                         const initial = lastImageProperties.current.get(img.id);
                         if (initial) {
                             return { ...img, transform: { ...initial, x: initial.x + dx, y: initial.y + dy } };
@@ -1687,7 +1693,7 @@ const App: React.FC = () => {
         break;
       }
     }
-  }, [currentProject, selectionRect, history, historyIndex, currentProjectId, applyErasure, recordNewHistoryState, selectedStrokeIds, selectedImageIds, calculateTransformedStrokes]);
+  }, [currentProject, selectionRect, history, historyIndex, currentProjectId, applyErasure, recordNewHistoryState, calculateTransformedStrokes]);
   
   const handleMouseLeave = useCallback(() => {
      if(actionRef.current !== 'none' && actionRef.current !== 'panning') {
