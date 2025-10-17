@@ -1,0 +1,5 @@
+{
+  "name": "Bảng trắng kĩ thuật số",
+  "description": "A simple digital whiteboard application where you can draw freely. Your creations are automatically saved to your browser's local storage.",
+  "requestFramePermissions": []
+}
