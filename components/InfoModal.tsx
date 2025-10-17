@@ -30,7 +30,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
         >
           <XIcon className="w-6 h-6" />
         </button>
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Thông tin</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Bảng vẽ trắng</h2>
         <div className="text-gray-700 space-y-2">
           <p><span className="font-semibold">Được thực hiện bởi:</span></p>
           <ul className="list-disc list-inside ml-4">
